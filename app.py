@@ -2,16 +2,19 @@ import streamlit as st
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_percentage_error
 from sklearn.preprocessing import LabelEncoder
 
 # Streamlit UI
-st.title("💼 Salary Prediction Application")
+st.title("💼 Salary Prediction Application with Multiple ML Models")
 
 # ============================
 # Load CSV automatically
 # ============================
-CSV_FILE = "Salary_Data.csv"  # <-- put your CSV file here
+CSV_FILE = "salary_data.csv"  # <-- place your CSV here
 try:
     df = pd.read_csv(CSV_FILE)
     st.success(f"✅ Loaded '{CSV_FILE}' successfully!")
@@ -35,15 +38,28 @@ y = df['Salary']
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=9598)
 
 # ============================
-# Train default model (Linear Regression)
-# ============================
-model = LinearRegression()
-model.fit(X_train, y_train)
-
-# ============================
-# Sidebar: Predict Your Salary Always
+# Sidebar: ML Model & User Input
 # ============================
 st.sidebar.subheader("Predict Your Salary 💰")
+
+# Select ML Model
+model_options = {
+    "Linear Regression": LinearRegression(),
+    "KNeighbors Regressor": KNeighborsRegressor(),
+    "Decision Tree Regressor": DecisionTreeRegressor(random_state=9598),
+    "Random Forest Regressor": RandomForestRegressor(random_state=9598)
+}
+selected_model_name = st.sidebar.selectbox("Select Model", list(model_options.keys()))
+model = model_options[selected_model_name]
+
+# Train selected model
+model.fit(X_train, y_train)
+
+# Show model accuracy
+y_pred = model.predict(X_test)
+error = mean_absolute_percentage_error(y_test, y_pred)
+accuracy = (1 - error) * 100
+st.sidebar.write(f"Model Accuracy: {accuracy:.2f}%")
 
 # Education Level selectbox
 edu_input = st.sidebar.selectbox(
@@ -67,16 +83,22 @@ predicted_salary = model.predict(user_X)[0]
 st.sidebar.success(f"Predicted Salary: ${predicted_salary:,.2f}")
 
 # ============================
-# Show Training Accuracy
+# Main Page: Model Comparison Table
 # ============================
-y_pred = model.predict(X_test)
-error = mean_absolute_percentage_error(y_test, y_pred)
-accuracy = (1 - error) * 100
-st.subheader("Model Accuracy")
-st.write(f"Linear Regression Accuracy: {accuracy:.2f}%")
+st.subheader("📊 Model Comparison")
+
+accuracies = {}
+for name, m in model_options.items():
+    m.fit(X_train, y_train)
+    y_pred_m = m.predict(X_test)
+    error_m = mean_absolute_percentage_error(y_test, y_pred_m)
+    acc = (1 - error_m) * 100
+    accuracies[name] = acc
+
+st.dataframe(pd.DataFrame.from_dict(accuracies, orient='index', columns=['Accuracy (%)']))
 
 # ============================
-# Data Table
+# Data Overview
 # ============================
 st.subheader("Data Overview")
 st.dataframe(df)
