@@ -14,7 +14,7 @@ st.title("💼 Salary Prediction Application with Multiple ML Models")
 # ============================
 # Load CSV automatically
 # ============================
-CSV_FILE = "salary_data.csv"  # <-- place your CSV here
+CSV_FILE = "Salary_Data.csv"  # <-- place your CSV here
 try:
     df = pd.read_csv(CSV_FILE)
     st.success(f"✅ Loaded '{CSV_FILE}' successfully!")
