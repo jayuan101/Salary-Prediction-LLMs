@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.neighbors import KNeighborsRegressor
@@ -9,8 +8,8 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_percentage_error
 from sklearn.preprocessing import LabelEncoder
 
-# Streamlit UI for Salary Prediction
-st.title("Salary Prediction Application")
+# Streamlit UI
+st.title("💼 Salary Prediction Application")
 
 # Upload CSV file
 uploaded_file = st.file_uploader("Upload Salary Data CSV", type="csv")
@@ -18,61 +17,83 @@ uploaded_file = st.file_uploader("Upload Salary Data CSV", type="csv")
 if uploaded_file:
     # Load data
     df = pd.read_csv(uploaded_file)
-    st.write("Data Sample:")
+    st.subheader("Data Sample")
     st.write(df.head())
 
     # Data cleaning and preprocessing
-    st.write("Data Cleaning and Preprocessing...")
-    df = df.dropna()  # Drop rows with any missing values
+    st.subheader("Data Cleaning and Preprocessing")
+    df = df.dropna()  # Drop rows with missing values
     label_encoder = LabelEncoder()
     df['Education Level'] = label_encoder.fit_transform(df['Education Level'])
 
-    # Splitting data into features (X) and target (y)
-    x = df[['Education Level', 'Years of Experience']]
-    y = df[['Salary']]
+    # Features and target
+    X = df[['Education Level', 'Years of Experience']]
+    y = df['Salary']  # 1D target
 
     # Train-test split
-    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=9598)
-
-    # Display shapes of the train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=9598)
     st.write("Training and Testing Data Shapes:")
-    st.write("X_train:", x_train.shape)
-    st.write("X_test:", x_test.shape)
-    st.write("y_train:", y_train.shape)
-    st.write("y_test:", y_test.shape)
+    st.write(f"X_train: {X_train.shape}, X_test: {X_test.shape}")
+    st.write(f"y_train: {y_train.shape}, y_test: {y_test.shape}")
 
-    # Define models
+    # Model options
     model_options = {
         'Linear Regression': LinearRegression(),
         'KNeighbors Regressor': KNeighborsRegressor(),
-        'DecisionTree Regressor': DecisionTreeRegressor(),
-        'RandomForest Regressor': RandomForestRegressor()
+        'Decision Tree Regressor': DecisionTreeRegressor(random_state=9598),
+        'Random Forest Regressor': RandomForestRegressor(random_state=9598)
     }
 
-    # Model selection and training
+    # Model selection
     selected_model = st.selectbox("Select a model to train", list(model_options.keys()))
 
+    trained_model = None
     if st.button("Train and Evaluate Model"):
-        # Train the selected model
         model = model_options[selected_model]
-        model.fit(x_train, y_train)
-        
-        # Predictions and accuracy calculation
-        y_pred = model.predict(x_test)
+        model.fit(X_train, y_train)
+        trained_model = model
+
+        y_pred = model.predict(X_test)
         error = mean_absolute_percentage_error(y_test, y_pred)
         accuracy = (1 - error) * 100
-        st.write(f"Accuracy of {selected_model}: {accuracy:.2f}%")
+        st.success(f"Accuracy of {selected_model}: {accuracy:.2f}%")
 
-    # Compare the accuracies of all models
+    # Compare all models
     if st.checkbox("Compare All Models"):
         accuracies = {}
-        for model_name, model in model_options.items():
-            model.fit(x_train, y_train)
-            y_pred = model.predict(x_test)
+        for name, model in model_options.items():
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
             error = mean_absolute_percentage_error(y_test, y_pred)
             accuracy = (1 - error) * 100
-            accuracies[model_name] = accuracy
-        
-        st.write("Model Accuracies:")
-        for model_name, accuracy in accuracies.items():
-            st.write(f"{model_name}: {accuracy:.2f}%")
+            accuracies[name] = accuracy
+
+        st.subheader("📊 Model Accuracies")
+        for name, acc in accuracies.items():
+            st.write(f"{name}: {acc:.2f}%")
+
+    # ============================
+    # Predict Salary for User Input
+    # ============================
+    if trained_model:
+        st.sidebar.subheader("Predict Your Salary 💰")
+
+        # User input for Education Level
+        edu_input = st.sidebar.selectbox(
+            "Select Education Level",
+            options=label_encoder.classes_
+        )
+        edu_encoded = label_encoder.transform([edu_input])[0]
+
+        # User input for Years of Experience
+        exp_input = st.sidebar.number_input(
+            "Enter Years of Experience",
+            min_value=0,
+            max_value=50,
+            value=1
+        )
+
+        # Predict salary
+        user_X = [[edu_encoded, exp_input]]
+        predicted_salary = trained_model.predict(user_X)[0]
+        st.sidebar.success(f"Predicted Salary: ${predicted_salary:,.2f}")
